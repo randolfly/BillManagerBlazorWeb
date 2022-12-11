@@ -1,0 +1,128 @@
+@page "/BillTable"
+@using System.Collections.Concurrent
+@using Console=System.Console
+@inject IBillService BillService
+@inject IPersonService PersonService
+@attribute [TabItemOption(Text = "Table")]
+
+<PageTitle>Table</PageTitle>
+
+<h1>订单总览页</h1>
+
+<div class="mt-3">@(string.Join(",", SelectedPersonItems))</div>
+
+<Table TItem="Bill" Items="@BillResults" IsPagination="true" PageItemsSource="PageItemsSource"
+       IsStriped="true" IsBordered="true" ShowSkeleton="true" IsMultipleSelect="false"
+       ShowToolbar="true" ShowSearch="true" ShowExtendButtons="true"
+       AutoGenerateColumns="false" EditMode="EditMode.Popup" OnSaveAsync="OnSaveAsync">
+    <TableColumns>
+        <TableColumn @bind-Field="@context.DateTime" FormatString="yyyy-MM-dd"/>
+        <TableColumn @bind-Field="@context.BillPersons" Text="人员">
+            <Template Context="value">
+                <div class="row g-3">
+                    @foreach (var billPerson in (List<BillPerson>)value.Value)
+                    {
+                        <div class="col-4 col-sm-auto">
+                            <Tag Color="Color.Info">@billPerson.Person.Name</Tag>
+                        </div>
+                    }
+                </div>
+            </Template>
+            <EditTemplate Context="value">
+                <div class="col-12 col-sm-6">
+                    <MultiSelect Items="@PersonItems" @bind-Value="@SelectedPersonItems"
+                                 Max="4" Min="1"
+                                 OnSelectedItemsChanged="@((items) => OnSelectedPersonItemsChanged((Bill)value, items))">
+                    </MultiSelect>
+                </div>
+            </EditTemplate>
+        </TableColumn>
+        <TableColumn @bind-Field="@context.BillTypes">
+            <Template Context="value">
+                <div class="row g-3">
+                    @foreach (var billType in (List<BillType>)value.Value)
+                    {
+                        <div class="col-4 col-sm-auto">
+                            <Tag Color="Color.Primary">@billType.Name</Tag>
+                        </div>
+                    }
+                </div>
+            </Template>
+        </TableColumn>
+        <TableColumn @bind-Field="@context.Brief"/>
+        <TableColumn @bind-Field="@context.Price"/>
+        <TableColumn @bind-Field="@context.BillState"/>
+        <TableColumn @bind-Field="@context.RbsType">
+            <Template Context="value">
+                @(value.Row.RbsType == RbsType.Rbs ? "可报销" : "不可报销")
+            </Template>
+        </TableColumn>
+        <TableColumn @bind-Field="@context.Assets">
+            <Template Context="value">
+                <PdfView Assets="@value.Row.Assets"/>
+            </Template>
+        </TableColumn>
+    </TableColumns>
+</Table>
+
+
+@code{
+    private readonly ConcurrentDictionary<Foo, IEnumerable<SelectedItem>> _cache = new();
+
+    private List<Bill> BillResults { get; set; } = new List<Bill>();
+    // 人员数据源
+    private List<Person> Persons { get; set; } = new List<Person>();
+    // 人员显示数据源
+    public List<SelectedItem> PersonItems { get; set; } = new List<SelectedItem>();
+    // 选择人员绑定数据源
+    public IEnumerable<string> SelectedPersonItems { get; set; } = Enumerable.Empty<string>();
+
+    protected async override Task OnInitializedAsync() {
+        BillResults = await BillService.GetBills();
+        Persons = await PersonService.GetPersons();
+        PersonItems = Persons.Select(x => new SelectedItem(x.Name, x.Name)).ToList();
+    }
+    
+    private static IEnumerable<int> PageItemsSource => new int[]
+    {
+        20, 40
+    };
+
+    
+    private Task OnSelectedPersonItemsChanged(Bill bill, IEnumerable<SelectedItem> items) {
+        var billPersons = Persons.Where(p => {
+            foreach (var selectedItem in items)
+            {
+                if (p.Name == selectedItem.Text)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }).Select(p => new BillPerson()
+        {
+            BillId = bill.Id,
+            Bill = bill,
+            PersonId = p.Id,
+            Person = p
+        }).ToList();
+        billPersons.ForEach(bp => Console.WriteLine($"CHANGE, {bp.Person.Name}"));
+        bill.BillPersons = billPersons;
+        return Task.CompletedTask;
+    }
+    
+    private async Task<bool> OnSaveAsync(Bill bill, ItemChangedType changedType) {
+        if (changedType != ItemChangedType.Add)
+        {
+            var oldItem = BillResults.FirstOrDefault(i => i.Id == bill.Id);
+            if (oldItem != null)
+            {
+                oldItem.BillTypes = bill.BillTypes;
+                oldItem.BillPersons = bill.BillPersons;
+                await BillService.UpdateBill(oldItem);
+            }
+            return true;
+        }
+        return false;
+    }
+}

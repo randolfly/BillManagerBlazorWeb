@@ -1,0 +1,40 @@
+﻿@using System.Diagnostics.CodeAnalysis
+
+
+<div class="col-12 col-sm-4 col-lg-auto">
+    <Button OnClick="() => Modal.Toggle()">显示附件</Button>
+    <Modal @ref="Modal" IsCentered="true" IsScrolling="true" IsBackdrop="true">
+        <ModalDialog Size="Size.ExtraLarge" Title="附件预览">
+            <BodyTemplate>
+                <div class="container">
+                    <div class="row">
+                        @foreach (var asset in Assets)
+                        {
+                            <div class="col-md-4">
+                                <iframe class="embed-responsive-item"
+                                        src="@(asset.FilePath)#zoom=page-fit"
+                                        width="100%"
+                                        height="400px">
+                                </iframe>
+                                <div class="card-body">
+                                    <p class="card-text">@asset.Comment</p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </BodyTemplate>
+        </ModalDialog>
+    </Modal>
+</div>
+
+
+@code {
+
+    [NotNull]
+    private Modal? Modal { get; set; }
+
+    [Parameter]
+    public List<Asset> Assets { get; set; } = new();
+
+}

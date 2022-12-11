@@ -1,0 +1,9 @@
+﻿@page "/"
+@namespace BillManagerWeb.Server.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@using BillManagerWeb.Server
+@{
+    Layout = "_Layout";
+}
+
+<component type="typeof(App)" render-mode="ServerPrerendered"/>
