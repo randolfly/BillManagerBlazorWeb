@@ -25,6 +25,8 @@ builder.Services.AddScoped<IPersonService, PersonService>();
 builder.Services.AddScoped<IAssetService, AssetService>();
 builder.Services.AddScoped<IBillService, BillService>();
 builder.Services.AddScoped<IHelperService, HelperService>();
+builder.Services.AddScoped<IBillTypeService, BillTypeService>();
+
 
 
 // 增加 Table 数据服务操作类
